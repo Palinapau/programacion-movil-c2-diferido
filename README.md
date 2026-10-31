@@ -29,7 +29,7 @@ La app y la API se ejecutan al mismo tiempo, cada una en su terminal. La app lee
 
 Rutas de la app, ya creadas como pantallas esqueleto: `/productos` (lista), `/productos/nuevo`, `/productos/:id` (detalle) y `/productos/:id/editar`.
 
-Hoy la API responde `501 Not implemented` en cada ruta de `/api/products`, y las pantallas muestran un `TODO`. Construir esa funcionalidad es el trabajo del parcial.
+La API Express implementa las cinco operaciones CRUD de `/api/products`, con filtros, validaciones y manejo uniforme de errores. La aplicación Ionic React incluye el catálogo con búsqueda y filtros, el detalle de productos y el formulario para crear y editar. El ejercicio Kotlin contiene el modelo `Product` y las funciones de etiquetas de stock y descuentos. Consulta `TODO.md` para conocer los requisitos y el alcance completo del parcial.
 
 ## Flujo de entrega
 
@@ -101,6 +101,14 @@ Para concentrar el parcial en lo trabajado en clase, algunas piezas vienen hecha
 ## Entrega: secciones de este README
 
 Al terminar, agregue aquí abajo las dos secciones escritas en inglés (3 a 5 frases cada una) que indica la Parte 7 de [TODO.md](./TODO.md): **State management decision** y **API error handling**. También actualice este README con cualquier paso adicional necesario para ejecutar su versión.
+
+## State management decision
+
+The application uses local component state with React's `useState` and `useEffect` hooks. Each page manages its own data and UI states, including loading, errors, search filters, and form values. We chose this approach because the product catalog does not require shared global state management. This keeps the application simple and follows the presentation layer responsibilities.
+
+## API error handling
+
+The data layer uses a centralized `request` function to handle HTTP requests and responses. Network failures and unsuccessful HTTP responses are converted into `ApiError` instances containing an error message and status code. The presentation layer uses `getErrorMessage` to display understandable error messages to users. Successful DELETE requests with status 204 are handled without attempting to parse a response body.
 
 ---
 

@@ -46,31 +46,187 @@ function createApp() {
   app.use(cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] }));
   app.use(express.json());
 
-  // Almacenamiento en memoria: copia de la semilla (se reinicia con el servidor).
-  // TODO(Parte 2): úselo en las rutas de abajo y lleve la cuenta del siguiente id.
+  // Almacenamiento en memoria: copia de la semilla.
   const products = seedProducts.map((item) => ({ ...item }));
-  void products;
-  void CATEGORIES;
-  void parseId;
 
-  const notImplemented = (_req, res) => {
-    res.status(501).json({ error: 'Not implemented' });
-  };
+  // El siguiente ID será siempre mayor que los IDs existentes.
+  let nextId = Math.max(
+  0,
+  ...products.map((product) => product.id)
+) + 1;
 
   // TODO(Parte 2): GET /api/products con filtros. Los parámetros llegan en `req.query`:
   //   const { search, category } = req.query;
   //   `search`: el nombre contiene el texto, sin distinguir mayúsculas (toLowerCase + includes).
   //   `category`: igual a la categoría (exacta). Use `.filter` sobre el arreglo.
-  app.get('/api/products', notImplemented);
+  app.get('/api/products', (req, res) => {
+  const { search, category } = req.query;
+
+  let result = [...products];
+
+  if (search) {
+    result = result.filter((product) =>
+      product.name.toLowerCase().includes(String(search).toLowerCase())
+    );
+  }
+
+  if (category) {
+    result = result.filter(
+      (product) => product.category === category
+    );
+  }
+
+  return res.status(200).json(result);
+});
   // TODO(Parte 2): GET /api/products/:id → 200 | 400 (parseId devuelve null) | 404 (no existe).
-  app.get('/api/products/:id', notImplemented);
+  app.get('/api/products/:id', (req, res) => {
+  const id = parseId(req.params.id);
+
+  if (id === null) {
+    return res.status(400).json({
+      error: 'ID de producto inválido',
+      details: ['El ID debe ser un número entero positivo.'],
+    });
+  }
+
+  const product = products.find((item) => item.id === id);
+
+  if (!product) {
+    return res.status(404).json({
+      error: 'Producto no encontrado',
+      details: [],
+    });
+  }
+
+  return res.status(200).json(product);
+});
   // TODO(Parte 2): POST /api/products → 201 con el producto creado | 400 con { error, details[] }.
   //   Patrón de validación:  const details = [];  if (...) details.push('mensaje');
-  app.post('/api/products', notImplemented);
+  app.post('/api/products', (req, res) => {
+  const { name, price, category, stock } = req.body || {};
+  const details = [];
+
+  if (typeof name !== 'string' || !name.trim()) {
+    details.push('El nombre es obligatorio.');
+  } else if (name.trim().length > 60) {
+    details.push('El nombre no puede superar los 60 caracteres.');
+  }
+
+  if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+    details.push('El precio debe ser un número mayor que 0.');
+  }
+
+  if (!CATEGORIES.includes(category)) {
+    details.push('La categoría no es válida.');
+  }
+
+  if (!Number.isInteger(stock) || stock < 0) {
+    details.push('El stock debe ser un entero mayor o igual a 0.');
+  }
+
+  if (details.length > 0) {
+    return res.status(400).json({
+      error: 'Datos del producto inválidos',
+      details,
+    });
+  }
+
+  const newProduct = {
+    id: nextId++,
+    name: name.trim(),
+    price,
+    category,
+    stock,
+  };
+
+  products.push(newProduct);
+
+  return res.status(201).json(newProduct);
+});
   // TODO(Parte 2): PUT /api/products/:id → 200 con el producto actualizado | 400 | 404.
-  app.put('/api/products/:id', notImplemented);
+  app.put('/api/products/:id', (req, res) => {
+  const id = parseId(req.params.id);
+
+  if (id === null) {
+    return res.status(400).json({
+      error: 'ID de producto inválido',
+      details: ['El ID debe ser un número entero positivo.'],
+    });
+  }
+
+  const productIndex = products.findIndex((item) => item.id === id);
+
+  if (productIndex === -1) {
+    return res.status(404).json({
+      error: 'Producto no encontrado',
+      details: [],
+    });
+  }
+
+  const { name, price, category, stock } = req.body;
+  const details = [];
+
+  if (typeof name !== 'string' || !name.trim()) {
+    details.push('El nombre es obligatorio.');
+  } else if (name.trim().length > 60) {
+    details.push('El nombre no puede superar los 60 caracteres.');
+  }
+
+  if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+    details.push('El precio debe ser un número mayor que 0.');
+  }
+
+  if (!CATEGORIES.includes(category)) {
+    details.push('La categoría no es válida.');
+  }
+
+  if (!Number.isInteger(stock) || stock < 0) {
+    details.push('El stock debe ser un entero mayor o igual a 0.');
+  }
+
+  if (details.length > 0) {
+    return res.status(400).json({
+      error: 'Datos del producto inválidos',
+      details,
+    });
+  }
+
+  const updatedProduct = {
+    id,
+    name: name.trim(),
+    price,
+    category,
+    stock,
+  };
+
+  products[productIndex] = updatedProduct;
+
+  return res.status(200).json(updatedProduct);
+});
   // TODO(Parte 2): DELETE /api/products/:id → 204 sin cuerpo (res.status(204).end()) | 400 | 404.
-  app.delete('/api/products/:id', notImplemented);
+  app.delete('/api/products/:id', (req, res) => {
+  const id = parseId(req.params.id);
+
+  if (id === null) {
+    return res.status(400).json({
+      error: 'ID de producto inválido',
+      details: ['El ID debe ser un número entero positivo.'],
+    });
+  }
+
+  const productIndex = products.findIndex((item) => item.id === id);
+
+  if (productIndex === -1) {
+    return res.status(404).json({
+      error: 'Producto no encontrado',
+      details: [],
+    });
+  }
+
+  products.splice(productIndex, 1);
+
+  return res.status(204).send();
+});
 
   // YA DADO: ruta desconocida → 404 con el formato de error uniforme.
   app.use((req, res) => {

@@ -90,19 +90,29 @@ export function formatCOP(value: number): string {
  * TODO(Parte 3): implementar (hoy devuelve valores de relleno).
  */
 export function toProductView(product: Product): ProductView {
-  // TODO(Parte 3): reemplazar este relleno por la implementación real.
+  const isOutOfStock = product.stock === 0;
+  const isLowStock =
+    product.stock > 0 && product.stock < LOW_STOCK_THRESHOLD;
+
+  let stockLabel = 'Disponible';
+
+  if (isOutOfStock) {
+    stockLabel = 'Agotado';
+  } else if (isLowStock) {
+    stockLabel = 'Pocas unidades';
+  }
+
   return {
     id: product.id,
-    name: product.name,
-    priceLabel: '',
+    name: product.name.trim(),
+    priceLabel: formatCOP(product.price),
     category: product.category,
     stock: product.stock,
-    stockLabel: '',
-    isLowStock: false,
-    isOutOfStock: false,
+    stockLabel,
+    isLowStock,
+    isOutOfStock,
   };
 }
-
 /**
  * Valida los datos del formulario con las MISMAS reglas que la API.
  *
@@ -116,9 +126,30 @@ export function toProductView(product: Product): ProductView {
  * TODO(Parte 3): implementar (hoy da por válido cualquier dato).
  */
 export function validateProduct(input: ProductInput): ValidationResult {
-  // TODO(Parte 3): validar `input` y devolver los errores por campo.
-  void input;
-  return { isValid: true, errors: {} };
+  const errors: Partial<Record<ProductField, string>> = {};
+
+  if (!input.name.trim()) {
+    errors.name = 'El nombre es obligatorio.';
+  } else if (input.name.trim().length > NAME_MAX_LENGTH) {
+    errors.name = `El nombre no puede superar los ${NAME_MAX_LENGTH} caracteres.`;
+  }
+
+  if (!Number.isFinite(input.price) || input.price <= 0) {
+    errors.price = 'El precio debe ser mayor que 0.';
+  }
+
+  if (!CATEGORIES.includes(input.category as (typeof CATEGORIES)[number])) {
+    errors.category = 'La categoría no es válida.';
+  }
+
+  if (!Number.isInteger(input.stock) || input.stock < 0) {
+    errors.stock = 'El stock debe ser un entero mayor o igual a 0.';
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
 }
 
 /**
@@ -132,8 +163,25 @@ export function validateProduct(input: ProductInput): ValidationResult {
  *
  * TODO(Parte 3): implementar (hoy devuelve la lista sin filtrar).
  */
-export function filterProducts(products: Product[], filters: ProductFilters): Product[] {
-  // TODO(Parte 3): aplicar `filters.search` y `filters.category`.
-  void filters;
-  return products;
+export function filterProducts(
+  products: Product[],
+  filters: ProductFilters
+): Product[] {
+  let result = [...products];
+
+  if (filters.search.trim()) {
+    const search = filters.search.trim().toLowerCase();
+
+    result = result.filter((product) =>
+      product.name.toLowerCase().includes(search)
+    );
+  }
+
+  if (filters.category) {
+    result = result.filter(
+      (product) => product.category === filters.category
+    );
+  }
+
+  return result;
 }

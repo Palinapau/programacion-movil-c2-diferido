@@ -8,23 +8,60 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 
-/**
- * Pantalla: detalle de un producto (ruta /productos/:id).
- *
- * `useParams` lee el `:id` de la ruta; llega como TEXTO, así que se convierte con `Number(id)`.
- *
- * TODO(Parte 3): cargar el producto con `getProduct(Number(id))` (patrón de la lista: `useState` +
- * `useEffect`) y mostrar nombre, categoría, precio, stock y la etiqueta de stock (`toProductView`).
- * Maneje carga y error (incluido «no encontrado», que llega como ApiError 404 y se traduce con
- * `getErrorMessage`). Agregue el botón «Editar» (/productos/:id/editar) y el botón «Eliminar» con
- * una confirmación simple en pantalla (una variable booleana que muestra «¿Eliminar este
- * producto?» con los botones Confirmar y Cancelar); al confirmar, llame a `deleteProduct(id)` y
- * regrese a la lista (`useHistory`).
- */
+import { getErrorMessage } from '../data/api-error';
+import { deleteProduct, getProduct } from '../data/products-api';
+import { toProductView } from '../domain/product';
+import type { ProductView } from '../domain/product';
+
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const history = useHistory();
+
+  const [product, setProduct] = useState<ProductView | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadProduct = async () => {
+      try {
+        setLoading(true);
+        const data = await getProduct(Number(id));
+
+        if (active) {
+          setProduct(toProductView(data));
+          setError('');
+        }
+      } catch (err) {
+        if (active) {
+          setError(getErrorMessage(err));
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void loadProduct();
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  const handleDelete = async () => {
+    try {
+      await deleteProduct(Number(id));
+      history.replace('/productos');
+    } catch (err) {
+      setError(getErrorMessage(err));
+      setConfirmDelete(false);
+    }
+  };
 
   return (
     <IonPage>
@@ -36,9 +73,66 @@ const ProductDetailPage: React.FC = () => {
           <IonTitle>Detalle del producto</IonTitle>
         </IonToolbar>
       </IonHeader>
+
       <IonContent className="ion-padding">
-        <p>TODO(Parte 3): detalle del producto con id {id}.</p>
-        <IonButton routerLink={`/productos/${id}/editar`}>Editar (ejemplo)</IonButton>
+        {loading && <p>Cargando producto...</p>}
+
+        {!loading && error && (
+          <div>
+            <p>{error}</p>
+            <IonButton onClick={() => history.replace('/productos')}>
+              Volver a productos
+            </IonButton>
+          </div>
+        )}
+
+        {!loading && !error && product && (
+          <>
+            <h2>{product.name}</h2>
+            <p>Categoría: {product.category}</p>
+            <h3>{product.priceLabel}</h3>
+            <p>Stock: {product.stock}</p>
+            <p>{product.stockLabel}</p>
+
+            <IonButton
+              expand="block"
+              routerLink={`/productos/${id}/editar`}
+            >
+              Editar
+            </IonButton>
+
+            <IonButton
+              expand="block"
+              color="danger"
+              onClick={() => setConfirmDelete(true)}
+            >
+              Eliminar
+            </IonButton>
+
+            {confirmDelete && (
+              <div className="ion-padding">
+                <p>¿Eliminar este producto?</p>
+
+                <IonButton
+                  color="danger"
+                  expand="block"
+                  onClick={() => void handleDelete()}
+                >
+                  Confirmar
+                </IonButton>
+
+                <IonButton
+                  color="medium"
+                  fill="outline"
+                  expand="block"
+                  onClick={() => setConfirmDelete(false)}
+                >
+                  Cancelar
+                </IonButton>
+              </div>
+            )}
+          </>
+        )}
       </IonContent>
     </IonPage>
   );
